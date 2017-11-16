@@ -15,22 +15,15 @@ import org.httpkit.HttpUtils;
  */
 public class MultipartEntity
 {
-    private final String name;
-    private final String filename;
-    private final Object content;
-    private final String contentType;
+    private String name;
+    private String filename;
+    private Object content;
 
-    public MultipartEntity(String name, Object content, String filename, String contentType)
+    public MultipartEntity(String name, Object content, String filename)
     {
         this.name = name;
         this.filename = filename;
         this.content = content;
-        this.contentType = contentType;
-    }
-
-    public MultipartEntity(String name, Object content, String filename)
-    {
-        this(name, content, filename, null);
     }
 
     public static String genBoundary(List<MultipartEntity> entities)
@@ -54,13 +47,9 @@ public class MultipartEntity
             {
                 bytes.append("\"\r\n");
             }
-
-            if (e.contentType != null)
+            if (e.content instanceof File || e.content instanceof InputStream)
             {
-                bytes.append("Content-Type: ").append(e.contentType).append("\r\n\r\n");
-            }
-            else if (e.content instanceof File || e.content instanceof InputStream)
-            {
+                // TODO configurable
                 bytes.append("Content-Type: application/octet-stream\r\n\r\n");
             }
             else
@@ -88,11 +77,6 @@ public class MultipartEntity
                 {
                     bytes.append(((ByteBuffer) e.content).get()); // copy
                 }
-            }
-            else if (e.content instanceof byte[])
-            {
-                byte[] contentBytes = (byte[]) e.content;
-                bytes.append(contentBytes, contentBytes.length);
             }
             bytes.append(HttpUtils.CR, HttpUtils.LF);
         }

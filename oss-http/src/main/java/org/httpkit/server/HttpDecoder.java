@@ -2,9 +2,7 @@ package org.httpkit.server;
 
 import static org.httpkit.HttpUtils.CHUNKED;
 import static org.httpkit.HttpUtils.CONTENT_LENGTH;
-import static org.httpkit.HttpUtils.CONTINUE;
 import static org.httpkit.HttpUtils.CR;
-import static org.httpkit.HttpUtils.EXPECT;
 import static org.httpkit.HttpUtils.TRANSFER_ENCODING;
 import static org.httpkit.HttpUtils.findEndOfString;
 import static org.httpkit.HttpUtils.findNonWhitespace;
@@ -13,14 +11,10 @@ import static org.httpkit.HttpUtils.getChunkSize;
 import static org.httpkit.HttpVersion.HTTP_1_0;
 import static org.httpkit.HttpVersion.HTTP_1_1;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.httpkit.HttpMethod;
 import org.httpkit.HttpUtils;
@@ -35,106 +29,30 @@ public class HttpDecoder
 
     public enum State
     {
-        ALL_READ, CONNECTION_OPEN, READ_INITIAL, READ_HEADER, READ_FIXED_LENGTH_CONTENT, READ_CHUNK_SIZE, READ_CHUNKED_CONTENT, READ_CHUNK_FOOTER, READ_CHUNK_DELIMITER,
+        ALL_READ, READ_INITIAL, READ_HEADER, READ_FIXED_LENGTH_CONTENT, READ_CHUNK_SIZE, READ_CHUNKED_CONTENT, READ_CHUNK_FOOTER, READ_CHUNK_DELIMITER,
     }
 
-    /**
-     * Pattern for matching numbers 0 to 255.  We use this in the IPV4 address pattern to prevent invalid sequences
-     * from be parsed by InetAddress.getByName and thus being treated as a name instead of an address.
-     */
-    private static final String  IPV4SEG       = "(?:0|1\\d{0,2}|2(?:[0-4]\\d*|5[0-5]?|[6-9])?|[3-9]\\d?)";
-    private static final String  IPV4ADDR      = IPV4SEG + "(?:\\." + IPV4SEG + "){3}";
-    /**
-     * Pattern for a port number.  We are not as strict in our pattern matching as we are with ipv4 address
-     * and instead rely upon Integer.parseInt and a range check.  Port 0 is invalid, so we disallow that here.
-     */
-    private static final String  PORT          = "[1-9]\\d{0,4}";
-    /**
-     * The PROXY protocol header is quite strict in what it allows, specifying for example that only
-     * a single space character (\x20) is allowed between components.
-     */
-    private static final Pattern PROXY_PATTERN = Pattern
-            .compile("PROXY\\x20TCP4\\x20(" + IPV4ADDR + ")\\x20(" + IPV4ADDR + ")\\x20(" + PORT + ")\\x20(" + PORT + ")");
+    private State               state         = State.READ_INITIAL;
+    private int                 readRemaining = 0;                            // bytes
+                                                                              // need
+                                                                              // read
+    private int                 readCount     = 0;                            // already
+                                                                              // read
+                                                                              // bytes
+                                                                              // count
 
-    private State                state;
-    private ProxyProtocolOption  proxyProtocolOption;
-    private int                  readRemaining = 0;                                                                        // bytes
-                                                                                                                           // need
-                                                                                                                           // read
-    private int                  readCount     = 0;                                                                        // already
-                                                                                                                           // read
-                                                                                                                           // bytes
-                                                                                                                           // count
+    HttpRequest                 request;                                      // package
+                                                                              // visible
+    private Map<String, Object> headers       = new TreeMap<String, Object>();
+    byte[]                      content;
 
-    private String               xForwardedFor;
-    private String               xForwardedProto;
-    private int                  xForwardedPort;
-    HttpRequest                  request;                                                                                  // package
-                                                                                                                           // visible
-    private Map<String, Object>  headers       = new TreeMap<String, Object>();
-    byte[]                       content;
+    private final int           maxBody;
+    private final LineReader    lineReader;
 
-    private final int            maxBody;
-    private final LineReader     lineReader;
-
-    public HttpDecoder(int maxBody, int maxLine, ProxyProtocolOption proxyProtocolOption)
+    public HttpDecoder(int maxBody, int maxLine)
     {
         this.maxBody = maxBody;
         this.lineReader = new LineReader(maxLine);
-        this.proxyProtocolOption = (proxyProtocolOption == null) ? ProxyProtocolOption.DISABLED : proxyProtocolOption;
-
-        this.state = (proxyProtocolOption == ProxyProtocolOption.DISABLED) ? State.READ_INITIAL : State.CONNECTION_OPEN;
-    }
-
-    private boolean parseProxyLine(String line) throws ProtocolException
-    {
-        // PROXY TCP4 255.255.255.255 255.255.255.255 65535 65535\r\n
-        if (!line.startsWith("PROXY "))
-        {
-            return false;
-        }
-
-        final Matcher m = PROXY_PATTERN.matcher(line);
-        if (!m.matches())
-        {
-            throw new ProtocolException("Unsupported or malformed proxy header: " + line);
-        }
-
-        try
-        {
-            final InetAddress clientAddr = InetAddress.getByName(m.group(1));
-            final InetAddress proxyAddr = InetAddress.getByName(m.group(2));
-
-            final int clientPort = Integer.parseInt(m.group(3), 10);
-            final int proxyPort = Integer.parseInt(m.group(4), 10);
-
-            if (((clientPort | proxyPort) & ~0xffff) != 0)
-            {
-                throw new ProtocolException("Invalid port number: " + line);
-            }
-
-            xForwardedFor = clientAddr.getHostAddress();
-            if (proxyPort == 80)
-            {
-                xForwardedProto = "http";
-            }
-            else if (proxyPort == 443)
-            {
-                xForwardedProto = "https";
-            }
-            xForwardedPort = proxyPort;
-
-            return true;
-
-        }
-        catch (NumberFormatException ex)
-        {
-            throw new ProtocolException("Malformed port in: " + line);
-        }
-        catch (UnknownHostException ex)
-        {
-            throw new ProtocolException("Malformed address in: " + line);
-        }
     }
 
     private void createRequest(String sb) throws ProtocolException
@@ -178,12 +96,6 @@ public class HttpDecoder
         }
     }
 
-    public boolean requiresContinue()
-    {
-        String expect = (String) headers.get(EXPECT);
-        return (request != null && request.version == HTTP_1_1 && expect != null && CONTINUE.equalsIgnoreCase(expect));
-    }
-
     public HttpRequest decode(ByteBuffer buffer) throws LineTooLargeException, ProtocolException, RequestTooLargeException
     {
         String line;
@@ -193,33 +105,6 @@ public class HttpDecoder
             {
                 case ALL_READ:
                     return request;
-                case CONNECTION_OPEN:
-                    line = lineReader.readLine(buffer);
-                    if (line != null)
-                    {
-                        // parseProxyLines returns true if the line parsed
-                        // false if it was not a PROXY line
-                        // or throws ProtocolException, if the PROXY line is
-                        // malformed or unsupported.
-                        if (parseProxyLine(line))
-                        {
-                            // valid proxy header
-                            state = State.READ_INITIAL;
-                        }
-                        else if (proxyProtocolOption == ProxyProtocolOption.OPTIONAL)
-                        {
-                            // did not parse as a proxy header, try to create a
-                            // request from it
-                            // as the READ_INITIAL state would.
-                            createRequest(line);
-                            state = State.READ_HEADER;
-                        }
-                        else
-                        {
-                            throw new ProtocolException("Expected PROXY header, got: " + line);
-                        }
-                    }
-                    break;
                 case READ_INITIAL:
                     line = lineReader.readLine(buffer);
                     if (line != null)
@@ -309,12 +194,6 @@ public class HttpDecoder
 
     private void readHeaders(ByteBuffer buffer) throws LineTooLargeException, RequestTooLargeException, ProtocolException
     {
-        if (proxyProtocolOption == ProxyProtocolOption.OPTIONAL || proxyProtocolOption == ProxyProtocolOption.ENABLED)
-        {
-            headers.put("x-forwarded-for", xForwardedFor);
-            headers.put("x-forwarded-proto", xForwardedProto);
-            headers.put("x-forwarded-port", xForwardedPort);
-        }
         String line = lineReader.readLine(buffer);
         while (line != null && !line.isEmpty())
         {

@@ -107,12 +107,6 @@ public class HeaderMap
         {
             String k = (String) arrays[i];
             Object v = arrays[i + 1];
-            // omit invalid headers and prevent possible exceptions (e.g.,
-            // NullPointerException)
-            if (k == null || v == null)
-            {
-                continue;
-            }
             // ring spec says it could be a seq
             if (v instanceof Seqable)
             {

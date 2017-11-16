@@ -31,7 +31,6 @@ import clojure.lang.PersistentArrayMap;
 @SuppressWarnings({ "rawtypes", "unchecked" })
 class ClojureRing
 {
-
     static final Keyword SERVER_PORT        = intern("server-port");
     static final Keyword SERVER_NAME        = intern("server-name");
     static final Keyword REMOTE_ADDR        = intern("remote-addr");
@@ -171,7 +170,6 @@ class WSHandler implements Runnable
         this.frame = frame;
     }
 
-    @Override
     public void run()
     {
         try
@@ -317,7 +315,7 @@ public class RingHandler implements IHandler
                         }
                         catch (Exception e1)
                         {
-                            HttpUtils.printError("on close handler", e);
+                            HttpUtils.printError("on close handler", e1);
                         }
                     }
                     else

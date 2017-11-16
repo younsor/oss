@@ -39,7 +39,7 @@ public class AsyncChannel
     static final long          headerSentOffset;
 
     private final SelectionKey key;
-    private final HttpServer   server;
+    private final NioThread    server;
 
     private HttpRequest        request;              // package private, for
                                                      // http 1.0 keep-alive
@@ -76,7 +76,7 @@ public class AsyncChannel
     // Changed from a Single Thread(IO event thread), no volatile needed
     LinkingRunnable serialTask;
 
-    public AsyncChannel(SelectionKey key, HttpServer server)
+    public AsyncChannel(SelectionKey key, NioThread server)
     {
         this.key = key;
         this.server = server;
@@ -139,10 +139,7 @@ public class AsyncChannel
         }
         else
         {
-            if (request.version == HttpVersion.HTTP_1_1)
-            {
-                headers.put("Transfer-Encoding", "chunked"); // first chunk
-            }
+            headers.put("Transfer-Encoding", "chunked"); // first chunk
             ByteBuffer[] bb = HttpEncode(status, headers, body);
             if (body == null)
             {
@@ -162,7 +159,7 @@ public class AsyncChannel
         {
             onClose(0);
         }
-        server.tryWrite(key, !close, buffers);
+        server.tryWrite(key, "", !close, buffers);
     }
 
     // for streaming, send a chunk of data to client
@@ -182,7 +179,7 @@ public class AsyncChannel
                         ByteBuffer.wrap(newLineBytes) // terminating CRLF
                                                       // sequence
                 };
-                server.tryWrite(key, !close, buffers);
+                server.tryWrite(key, "", !close, buffers);
             }
         }
         if (close)
@@ -211,7 +208,7 @@ public class AsyncChannel
     public void sendHandshake(Map<String, Object> headers)
     {
         HeaderMap map = HeaderMap.camelCase(headers);
-        server.tryWrite(key, HttpEncode(101, map, null));
+        server.tryWrite(key, "", HttpEncode(101, map, null));
     }
 
     public void setCloseHandler(IFn fn)
@@ -247,11 +244,11 @@ public class AsyncChannel
         }
         if (isWebSocket())
         {
-            server.tryWrite(key, WsEncode(OPCODE_CLOSE, ByteBuffer.allocate(2).putShort((short) status).array()));
+            server.tryWrite(key, "", WsEncode(OPCODE_CLOSE, ByteBuffer.allocate(2).putShort((short) status).array()));
         }
         else
         {
-            server.tryWrite(key, false, ByteBuffer.wrap(finalChunkBytes));
+            server.tryWrite(key, "", false, ByteBuffer.wrap(finalChunkBytes));
         }
         IFn f = closeHandler;
         if (f != null)
@@ -281,21 +278,20 @@ public class AsyncChannel
 
             if (data instanceof String)
             { // null is not allowed
-                server.tryWrite(key, WsEncode(OPCODE_TEXT, ((String) data).getBytes(UTF_8)));
+                server.tryWrite(key, "", WsEncode(OPCODE_TEXT, ((String) data).getBytes(UTF_8)));
             }
             else if (data instanceof byte[])
             {
-                server.tryWrite(key, WsEncode(OPCODE_BINARY, (byte[]) data));
+                server.tryWrite(key, "", WsEncode(OPCODE_BINARY, (byte[]) data));
             }
             else if (data instanceof InputStream)
             {
                 DynamicBytes bytes = readAll((InputStream) data);
-                server.tryWrite(key, WsEncode(OPCODE_BINARY, bytes.get(), bytes.length()));
+                server.tryWrite(key, "", WsEncode(OPCODE_BINARY, bytes.get(), bytes.length()));
             }
             else if (data != null)
             { // ignore null
-                String mesg = "send! called with data: " + data.toString() + "(" + data.getClass()
-                        + "), but only string, byte[], InputStream expected";
+                String mesg = "send! called with data: " + data.toString() + "(" + data.getClass() + "), but only string, byte[], InputStream expected";
                 throw new IllegalArgumentException(mesg);
             }
 

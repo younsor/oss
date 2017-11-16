@@ -121,8 +121,7 @@ public class WSDecoder
                         // if negative, that too big, drop it.
                         if (length < 65536)
                         {
-                            throw new ProtocolException(
-                                    "invalid data frame length. most significant bit is not zero or length fits in unsigned short.");
+                            throw new ProtocolException("invalid data frame length. most significant bit is not zero or length fits in unsigned short.");
                         }
                         abortIfTooLarge(length);
                         payloadLength = (int) length;
@@ -181,7 +180,6 @@ public class WSDecoder
                         {
                             if (fragmentedOpCode > 0)
                                 opcode = fragmentedOpCode;
-                            fragmentedOpCode = -1;
                             switch (opcode)
                             {
                                 case OPCODE_TEXT:

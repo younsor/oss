@@ -1,0 +1,77 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+<configuration scan="true" scanPeriod="10000" debug="true"> 
+	<contextName>allot</contextName>
+	<property name="LogHome" value="${user.dir}/log" />
+	<property name="SrvLogName" value="adx"></property>
+	<property name="OssLogName" value="oss"></property>
+	<property name="DefLogName" value="default"></property>
+
+	<appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
+		<Encoding>UTF-8</Encoding>
+		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder"> 
+			<pattern>%d{HH:mm:ss.SSS}|%level|%thread%msg%n</pattern> 
+		</encoder> 
+	</appender>
+
+	<appender name="srv" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<Encoding>UTF-8</Encoding>
+		<file>${LogHome}/${SrvLogName}.log</file> 
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy"> 
+			<fileNamePattern>${LogHome}/${SrvLogName}-%d{yyyy-MM-dd}-%i.log</fileNamePattern>
+			<MaxHistory>30</MaxHistory>
+			<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+				<maxFileSize>50MB</maxFileSize>
+			</timeBasedFileNamingAndTriggeringPolicy>
+		</rollingPolicy> 
+		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder"> 
+			<pattern>%d{HH:mm:ss.SSS}|%level|%thread%msg%n</pattern> 
+		</encoder> 
+	</appender> 
+
+	<appender name="oss" class="ch.qos.logback.core.rolling.RollingFileAppender"> \
+		<Encoding>UTF-8</Encoding>
+		<file>${LogHome}/${OssLogName}.log</file> 
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy"> 
+			<fileNamePattern>${LogHome}/${OssLogName}-%d{yyyy-MM-dd}-%i.log</fileNamePattern> 
+			<maxHistory>30</maxHistory>
+			<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+				<maxFileSize>50MB</maxFileSize>
+			</timeBasedFileNamingAndTriggeringPolicy>
+		</rollingPolicy> 
+		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<pattern>%d{HH:mm:ss.SSS}|%level|%thread%msg%n</pattern> 
+		</encoder> 
+	</appender> 
+	
+	<appender name="default" class="ch.qos.logback.core.rolling.RollingFileAppender"> \
+		<Encoding>UTF-8</Encoding>
+		<file>${LogHome}/${DefLogName}.log</file> 
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy"> 
+			<fileNamePattern>${LogHome}/${DefLogName}-%d{yyyy-MM-dd}-%i.log</fileNamePattern> 
+			<maxHistory>30</maxHistory>
+			<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+				<maxFileSize>50MB</maxFileSize>
+			</timeBasedFileNamingAndTriggeringPolicy>
+		</rollingPolicy> 
+		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<pattern>%d{HH:mm:ss.SSS}|%level|%thread|-%msg%n</pattern> 
+		</encoder> 
+	</appender> 
+
+	<logger name="mkitoss" level="DEBUG" additivity="false"> 
+		<appender-ref ref="stdout" />
+		<appender-ref ref="oss" /> 
+	</logger> 
+	
+	<logger name="mkitsrv" level="DEBUG" additivity="false"> 
+		<appender-ref ref="stdout" />
+		<appender-ref ref="srv" /> 
+	</logger> 
+
+	<root level="DEBUG">
+		<appender-ref ref="stdout" />
+		<appender-ref ref="default" /> 
+	</root> 
+</configuration>
+
+

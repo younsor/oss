@@ -8,8 +8,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -28,6 +26,7 @@ import java.util.regex.Pattern;
 
 import clojure.lang.ISeq;
 import clojure.lang.Seqable;
+import cn.zyy.oss.share.OssLog;
 
 //  SimpleDateFormat is not thread safe
 class DateFormatter extends ThreadLocal<SimpleDateFormat>
@@ -50,7 +49,7 @@ class DateFormatter extends ThreadLocal<SimpleDateFormat>
 
 public class HttpUtils
 {
-
+    private static final OssLog log               = new OssLog(OssLog.LOG_MODULE_OSS);
     public static final Charset ASCII             = Charset.forName("US-ASCII");
     public static final Charset UTF_8             = Charset.forName("utf8");
 
@@ -58,9 +57,9 @@ public class HttpUtils
     // Colon ':'
     public static final byte    COLON             = 58;
 
-    public static final byte    CR                = 13;                         // \r
+    public static final byte    CR                = 13;                               // \r
 
-    public static final byte    LF                = 10;                         // \n
+    public static final byte    LF                = 10;                               // \n
 
     // public static final int ABORT_PROCESSING = -1;
 
@@ -99,10 +98,6 @@ public class HttpUtils
     // space ' '
     public static final byte    SP                = 32;
 
-    public static final String  EXPECT            = "expect";
-
-    public static final String  CONTINUE          = "100-continue";
-
     public static ByteBuffer bodyBuffer(Object body) throws IOException
     {
         if (body == null)
@@ -127,20 +122,13 @@ public class HttpUtils
         else if (body instanceof Seqable)
         {
             ISeq seq = ((Seqable) body).seq();
-            if (seq == null)
+            DynamicBytes b = new DynamicBytes(seq.count() * 512);
+            while (seq != null)
             {
-                return null;
+                b.append(seq.first().toString(), UTF_8);
+                seq = seq.next();
             }
-            else
-            {
-                DynamicBytes b = new DynamicBytes(seq.count() * 512);
-                while (seq != null)
-                {
-                    b.append(seq.first().toString(), UTF_8);
-                    seq = seq.next();
-                }
-                return ByteBuffer.wrap(b.get(), 0, b.length());
-            }
+            return ByteBuffer.wrap(b.get(), 0, b.length());
             // makes ultimate optimization possible: no copy
         }
         else if (body instanceof ByteBuffer)
@@ -323,16 +311,6 @@ public class HttpUtils
         return host;
     }
 
-    public static String getProxyHost(URI uri)
-    {
-        if (uri.getPort() == -1)
-        {
-            return uri.getHost();
-        }
-
-        return uri.getHost() + ":" + uri.getPort();
-    }
-
     public static InetSocketAddress getServerAddr(URI uri) throws UnknownHostException
     {
         InetAddress host = getByName(uri.getHost());
@@ -409,12 +387,14 @@ public class HttpUtils
 
     public static void printError(String msg, Throwable t)
     {
-        String error = String.format("%s [%s] ERROR - %s", new Date(), Thread.currentThread().getName(), msg);
-        StringWriter str = new StringWriter();
-        PrintWriter pw = new PrintWriter(str, false);
-        pw.println(error);
-        t.printStackTrace(pw);
-        System.err.print(str.getBuffer().toString());
+        String info = "";
+        StackTraceElement[] trace = t.getStackTrace();
+        for (StackTraceElement s : trace)
+        {
+            info += "\tat " + s + "\n";
+        }
+
+        log.error(msg + ": \n" + info);
     }
 
     public static void splitAndAddHeader(String sb, Map<String, Object> headers)
@@ -576,10 +556,7 @@ public class HttpUtils
             headers.put(CL, Integer.toString(b.length));
             bodyBuffer = ByteBuffer.wrap(b);
         }
-        if (!headers.containsKey("Server"))
-        {
-            headers.put("Server", "http-kit");
-        }
+        headers.put("Server", "http-kit");
         headers.put("Date", DateFormatter.getDate()); // rfc says the Date is
                                                       // needed
 

@@ -59,12 +59,14 @@ class TrustManagerFactory extends TrustManagerFactorySpi
 
         public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException
         {
-            // Always trust
+            // Always
+            // trust
         }
 
         public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException
         {
-            // Always trust
+            // Always
+            // trust
         }
     };
 

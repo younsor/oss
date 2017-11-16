@@ -2,6 +2,8 @@ package org.httpkit.client;
 
 import java.util.Map;
 
+import org.httpkit.BytesInputStream;
+
 public interface IResponseHandler
 {
 

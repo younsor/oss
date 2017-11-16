@@ -36,6 +36,7 @@ public abstract class Frame
         // more suitable status code (e.g., 1003 or 1009)
         // public final static short CLOSE_VIOLATES_POLICY = 1008;
         public final static short CLOSE_MESG_BIG = 1009;
+
         // public final static short CLOSE_SEVER_ERROR = 1011;
 
         // private static byte[] bytes(short code) {

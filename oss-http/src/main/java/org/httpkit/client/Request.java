@@ -67,11 +67,6 @@ public class Request implements Comparable<Request>
         return timeoutTs < now;
     }
 
-    public long toTimeout(long now)
-    {
-        return Math.max(timeoutTs - now, 0L);
-    }
-
     public void finish(Throwable t)
     {
         clients.remove(this);

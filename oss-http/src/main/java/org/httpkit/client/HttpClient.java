@@ -11,7 +11,6 @@ import static org.httpkit.client.State.READ_INITIAL;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.StandardSocketOptions;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
@@ -38,9 +37,12 @@ import org.httpkit.HttpUtils;
 import org.httpkit.PriorityQueue;
 import org.httpkit.ProtocolException;
 
-public class HttpClient implements Runnable
+import cn.zyy.oss.share.OssLog;
+
+public final class HttpClient implements Runnable
 {
-    private static final AtomicInteger ID = new AtomicInteger(0);
+    private static final OssLog        log = new OssLog("mkitoss");
+    private static final AtomicInteger ID  = new AtomicInteger(0);
 
     public static final SSLContext     DEFAULT_CONTEXT;
 
@@ -57,35 +59,26 @@ public class HttpClient implements Runnable
     }
 
     // queue request, for only issue connection in the IO thread
-    private final Queue<Request>                pending        = new ConcurrentLinkedQueue<Request>();
+    private final Queue<Request>                pending    = new ConcurrentLinkedQueue<Request>();
     // ongoing requests, saved for timeout check
-    private final PriorityQueue<Request>        requests       = new PriorityQueue<Request>();
+    private final PriorityQueue<Request>        requests   = new PriorityQueue<Request>();
     // reuse TCP connection
-    private final PriorityQueue<PersistentConn> keepalives     = new PriorityQueue<PersistentConn>();
-    private final long                          maxConnections;
-    private volatile long                       numConnections = 0;
-    private volatile boolean                    running        = true;
+    private final PriorityQueue<PersistentConn> keepalives = new PriorityQueue<PersistentConn>();
+
+    private volatile boolean                    running    = true;
 
     // shared, single thread
-    private final ByteBuffer                    buffer         = ByteBuffer.allocateDirect(1024 * 64);
+    private final ByteBuffer                    buffer     = ByteBuffer.allocateDirect(1024 * 64);
     private final Selector                      selector;
 
-    public HttpClient() throws IOException
-    {
-        this(-1);
-    }
+    private String                              threadName;
 
-    public HttpClient(long maxConnections) throws IOException
+    public HttpClient(String name) throws IOException
     {
         int id = ID.incrementAndGet();
-        String name = "client-loop";
-        if (id > 1)
-        {
-            name = name + "#" + id;
-        }
-        this.maxConnections = maxConnections;
+        threadName = name;
         selector = Selector.open();
-        Thread t = new Thread(this, name);
+        Thread t = new Thread(this, threadName);
         t.setDaemon(true);
         t.start();
     }
@@ -251,7 +244,6 @@ public class HttpClient implements Runnable
         catch (Exception ignore)
         {
         }
-        numConnections--;
     }
 
     private void doWrite(SelectionKey key)
@@ -302,14 +294,10 @@ public class HttpClient implements Runnable
 
     public void exec(String url, RequestConfig cfg, SSLEngine engine, IRespListener cb)
     {
-        URI uri, proxyUri = null;
+        URI uri;
         try
         {
             uri = new URI(url);
-            if (cfg.proxy_host != null)
-            {
-                proxyUri = new URI(String.format("%s:%03d", cfg.proxy_host, cfg.proxy_port));
-            }
         }
         catch (URISyntaxException e)
         {
@@ -334,14 +322,7 @@ public class HttpClient implements Runnable
         InetSocketAddress addr;
         try
         {
-            if (proxyUri == null)
-            {
-                addr = getServerAddr(uri);
-            }
-            else
-            {
-                addr = getServerAddr(proxyUri);
-            }
+            addr = getServerAddr(uri);
         }
         catch (UnknownHostException e)
         {
@@ -362,55 +343,28 @@ public class HttpClient implements Runnable
         // headers.put("Accept", "*/*");
         if (!headers.containsKey("User-Agent")) // allow override
             headers.put("User-Agent", RequestConfig.DEFAULT_USER_AGENT); // default
-        if (!headers.containsKey("Accept-Encoding"))
-            headers.put("Accept-Encoding", "gzip, deflate"); // compression is
-                                                             // good
+
+        // if (!headers.containsKey("Accept-Encoding"))
+        // headers.put("Accept-Encoding", "gzip, deflate"); // compression is
+        // good
 
         ByteBuffer request[];
         try
         {
-            if (proxyUri == null)
-            {
-                request = encode(cfg.method, headers, cfg.body, HttpUtils.getPath(uri));
-            }
-            else
-            {
-                String proxyScheme = proxyUri.getScheme();
-                headers.put("Proxy-Connection", "Keep-Alive");
-                if (("http".equals(proxyScheme) && !"https".equals(scheme)) || cfg.tunnel == false)
-                {
-                    request = encode(cfg.method, headers, cfg.body, uri.toString());
-                }
-                else if ("https".equals(proxyScheme) || "https".equals(scheme))
-                {
-                    headers.put("Host", HttpUtils.getProxyHost(uri));
-                    headers.put("Protocol", "https");
-                    HttpMethod https_method = cfg.tunnel == true ? HttpMethod.valueOf("CONNECT") : cfg.method;
-                    request = encode(https_method, headers, cfg.body, HttpUtils.getProxyHost(uri));
-                }
-                else
-                {
-                    String message = (proxyScheme == null) ? "No proxy protocol specified" : proxyScheme + " for proxy is not supported";
-                    cb.onThrowable(new ProtocolException(message));
-                    return;
-                }
-            }
+            request = encode(cfg.method, headers, cfg.body, uri);
         }
         catch (IOException e)
         {
             cb.onThrowable(e);
             return;
         }
-
-        if ((proxyUri == null && "https".equals(scheme)) || (proxyUri != null && "https".equals(proxyUri.getScheme())))
+        if ("https".equals(scheme))
         {
             if (engine == null)
             {
                 engine = DEFAULT_CONTEXT.createSSLEngine();
             }
-            if (!engine.getUseClientMode())
-                engine.setUseClientMode(true);
-
+            engine.setUseClientMode(true);
             pending.offer(new HttpsRequest(addr, request, cb, requests, cfg, engine));
         }
         else
@@ -422,7 +376,7 @@ public class HttpClient implements Runnable
         selector.wakeup();
     }
 
-    private ByteBuffer[] encode(HttpMethod method, HeaderMap headers, Object body, String path) throws IOException
+    private ByteBuffer[] encode(HttpMethod method, HeaderMap headers, Object body, URI uri) throws IOException
     {
         ByteBuffer bodyBuffer = HttpUtils.bodyBuffer(body);
 
@@ -435,7 +389,7 @@ public class HttpClient implements Runnable
             headers.putOrReplace("Content-Length", "0");
         }
         DynamicBytes bytes = new DynamicBytes(196);
-        bytes.append(method.toString()).append(SP).append(path);
+        bytes.append(method.toString()).append(SP).append(HttpUtils.getPath(uri));
         bytes.append(" HTTP/1.1\r\n");
         headers.encodeHeaders(bytes);
         ByteBuffer headBuffer = ByteBuffer.wrap(bytes.get(), 0, bytes.length());
@@ -476,8 +430,8 @@ public class HttpClient implements Runnable
 
     private void processPending()
     {
-        Request job = pending.peek();
-        if (job != null)
+        Request job = null;
+        while ((job = pending.poll()) != null)
         {
             if (job.cfg.keepAlive > 0)
             {
@@ -495,8 +449,7 @@ public class HttpClient implements Runnable
                             key.attach(job);
                             key.interestOps(OP_WRITE);
                             requests.offer(job);
-                            pending.poll();
-                            return;
+                            continue;
                         }
                         catch (SSLException e)
                         {
@@ -511,31 +464,25 @@ public class HttpClient implements Runnable
                     }
                 }
             }
-            if (maxConnections == -1 || numConnections < maxConnections)
+            try
             {
-                try
-                {
-                    pending.poll();
-                    SocketChannel ch = SocketChannel.open();
-                    ch.setOption(StandardSocketOptions.SO_KEEPALIVE, Boolean.TRUE);
-                    ch.setOption(StandardSocketOptions.TCP_NODELAY, Boolean.TRUE);
-                    ch.configureBlocking(false);
-                    boolean connected = ch.connect(job.addr);
-                    job.isConnected = connected;
-                    numConnections++;
-                    // if connection is established immediatelly, should wait
-                    // for write. Fix #98
-                    job.key = ch.register(selector, connected ? OP_WRITE : OP_CONNECT, job);
-                    // save key for timeout check
-                    requests.offer(job);
-                }
-                catch (IOException e)
-                {
-                    job.finish(e);
-                    // HttpUtils.printError("Try to connect " + job.addr, e);
-                }
-            }
+                SocketChannel ch = SocketChannel.open();
+                ch.configureBlocking(false);
+                boolean connected = ch.connect(job.addr);
+                job.isConnected = connected;
 
+                // if connection is established immediatelly, should wait for
+                // write. Fix #98
+                job.key = ch.register(selector, connected ? OP_WRITE : OP_CONNECT, job);
+                // save key for timeout check
+
+                requests.offer(job);
+            }
+            catch (IOException e)
+            {
+                job.finish(e);
+                // HttpUtils.printError("Try to connect " + job.addr, e);
+            }
         }
     }
 
@@ -545,14 +492,8 @@ public class HttpClient implements Runnable
         {
             try
             {
-                Request first = requests.peek();
-                long timeout = 2000;
-                if (first != null)
-                {
-                    timeout = Math.max(first.toTimeout(currentTimeMillis()), 200L);
-                }
-                int select = selector.select(timeout);
                 long now = currentTimeMillis();
+                int select = selector.select(1500);
                 if (select > 0)
                 {
                     Set<SelectionKey> selectedKeys = selector.selectedKeys();
@@ -585,7 +526,7 @@ public class HttpClient implements Runnable
             catch (Throwable e)
             { // catch any exception (including OOM), print it: do not exits the
               // loop
-                HttpUtils.printError("select exception, should not happen", e);
+                HttpUtils.printError("select exception: ", e);
             }
         }
     }

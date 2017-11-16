@@ -49,7 +49,8 @@ public class CancelableFutureTask implements Comparable<CancelableFutureTask>
     {
         boolean b = done.compareAndSet(false, true);
         if (b)
-        {// ok, not done
+        {
+            // ok, not done
             synchronized (queue)
             {
                 queue.remove(this);
