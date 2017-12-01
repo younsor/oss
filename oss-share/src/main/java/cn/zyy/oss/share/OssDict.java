@@ -259,35 +259,35 @@ public class OssDict
 
         return iValue;
     }
-    
+
     public void close()
-    {        
-        if(null != mapTypeCodeKeyId)
+    {
+        if (null != mapTypeCodeKeyId)
         {
             mapTypeCodeKeyId.clear();
         }
-        
-        if(null != prev_mapTypeCodeKeyId)
+
+        if (null != prev_mapTypeCodeKeyId)
         {
             prev_mapTypeCodeKeyId.clear();
         }
-        
-        if(null != mapTypeCodeIdKey)
+
+        if (null != mapTypeCodeIdKey)
         {
             mapTypeCodeIdKey.clear();
         }
-        
-        if(null != prev_mapTypeCodeIdKey)
+
+        if (null != prev_mapTypeCodeIdKey)
         {
             prev_mapTypeCodeIdKey.clear();
         }
-        
-        if(null != mapKey2Id)
+
+        if (null != mapKey2Id)
         {
             mapKey2Id.clear();
         }
-        
-        if(null != prev_mapKey2Id)
+
+        if (null != prev_mapKey2Id)
         {
             prev_mapKey2Id.clear();
         }

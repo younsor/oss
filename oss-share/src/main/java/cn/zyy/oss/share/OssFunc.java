@@ -360,11 +360,11 @@ public class OssFunc
 
     public static class TimeConvert
     {
-        public final static String DF_DAY         = "yyyy-MM-dd";
-        public final static String DF_HOUR        = "yyyy-MM-dd HH";
-        public final static String DF_MINUTE      = "yyyy-MM-dd HH:mm";
-        public final static String DF_SECOND      = "yyyy-MM-dd HH:mm:ss";
-        public final static String DF_MILL_SECOND = "yyyy-MM-dd HH:mm:ss:SSS";
+        public final static String DF_DAY          = "yyyy-MM-dd";
+        public final static String DF_HOUR         = "yyyy-MM-dd HH";
+        public final static String DF_MINUTE       = "yyyy-MM-dd HH:mm";
+        public final static String DF_SECOND       = "yyyy-MM-dd HH:mm:ss";
+        public final static String DF_MILL_SECOND  = "yyyy-MM-dd HH:mm:ss:SSS";
         public final static String SID_MILL_SECOND = "yyyyMMddHHmmssSSS";
 
         public static synchronized Date Format2Date(Object objDate, String format)

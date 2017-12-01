@@ -138,7 +138,7 @@ public class OssDB
         {
             return mapRecord.size();
         }
-        
+
         public void close()
         {
             mapRecord.clear();
@@ -918,16 +918,16 @@ public class OssDB
             log.error(OssFunc.getExceptionInfo(e));
         }
     }
-    
+
     public void closeResultSet(ResultSet rltSet)
     {
         try
         {
-            if(!rltSet.isClosed())
+            if (!rltSet.isClosed())
             {
                 Statement tmpSM = rltSet.getStatement();
                 tmpSM.close();
-                
+
                 rltSet.close();
             }
         }
@@ -985,7 +985,7 @@ public class OssDB
             selectResult.putRecord(dimFields, mapFields);
         }
         walker.close();
-        
+
         closeResultSet(rltSet);
 
         return selectResult;
@@ -1016,7 +1016,7 @@ public class OssDB
             selectResult.putRecord(dimFields, mapFields);
         }
         walker.close();
-        
+
         closeResultSet(rltSet);
 
         return selectResult;
@@ -1223,7 +1223,7 @@ public class OssDB
         }
         return count;
     }
-    
+
     public int DeleteRow(String tableName, Map<String, Object> mapFields) throws Exception
     {
         if (null == tableName || tableName.length() <= 0)
