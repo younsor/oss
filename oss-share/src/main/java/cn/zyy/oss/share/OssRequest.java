@@ -12,6 +12,7 @@ public class OssRequest
     public Map<String, Object> headers  = Maps.newHashMap();
     public Map<String, String> getParam = Maps.newHashMap();
     public byte[]              postBody = null;
+    public Object              srvInfo  = null;
 
     public String toString()
     {
@@ -21,6 +22,7 @@ public class OssRequest
         strSB.append("\tget_query: " + getQuery + "\n");
         strSB.append("\tpost_body: " + ((null == postBody) ? "null" : (new String(postBody))) + "\n");
         strSB.append("\theaders: " + headers.toString() + "\n");
+        strSB.append("\tsrvInfo: " + srvInfo.toString() + "\n");
 
         return strSB.toString();
     }

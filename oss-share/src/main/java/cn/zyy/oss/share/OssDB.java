@@ -1036,7 +1036,7 @@ public class OssDB
         return InsertRow(tableName, mapFields, false);
     }
 
-    public int InsertRow(String tableName, Map<String, Object> mapFields, boolean isIgnore) throws Exception
+    public int InsertRow(String tableName, Map<String, Object> mapFields, boolean isIgnore)
     {
         if (null == tableName || tableName.length() <= 0)
         {
@@ -1092,7 +1092,7 @@ public class OssDB
         return count;
     }
 
-    public int UpdateRow(String tableName, Map<String, String> dimMap, Map<String, Object> tarMap) throws Exception
+    public int UpdateRow(String tableName, Map<String, String> dimMap, Map<String, Object> tarMap)
     {
         if (null == tableName || tableName.length() <= 0)
         {
@@ -1158,7 +1158,7 @@ public class OssDB
         return count;
     }
 
-    public int UpdateRowAddNum(String tableName, Map<String, String> dimMap, Map<String, Object> tarMap) throws Exception
+    public int UpdateRowAddNum(String tableName, Map<String, String> dimMap, Map<String, Object> tarMap)
     {
         if (null == tableName || tableName.length() <= 0)
         {
@@ -1224,7 +1224,7 @@ public class OssDB
         return count;
     }
 
-    public int DeleteRow(String tableName, Map<String, Object> mapFields) throws Exception
+    public int DeleteRow(String tableName, Map<String, Object> mapFields)
     {
         if (null == tableName || tableName.length() <= 0)
         {

@@ -94,6 +94,35 @@ public class OssFunc
         }
     }
 
+    public static String SHA1(String decrypt)
+    {
+        try
+        {
+            MessageDigest digest = MessageDigest.getInstance("SHA-1");
+            digest.update(decrypt.getBytes());
+
+            byte messageDigest[] = digest.digest();
+            StringBuffer hexString = new StringBuffer();
+            for (int i = 0; i < messageDigest.length; i++)
+            {
+                String shaHex = Integer.toHexString(messageDigest[i] & 0xFF);
+                if (shaHex.length() < 2)
+                {
+                    hexString.append(0);
+                }
+                hexString.append(shaHex);
+            }
+
+            return hexString.toString();
+        }
+        catch (Exception e)
+        {
+            log.error("get sha1 exception: \n" + OssFunc.getExceptionInfo(e));
+
+            return null;
+        }
+    }
+
     public static String getFileContent(String filePath)
     {
         StringBuilder jsonContent = new StringBuilder();
@@ -356,6 +385,38 @@ public class OssFunc
         // 将高24位置0
         sb.append(String.valueOf((longIp & 0x000000FF)));
         return sb.toString();
+    }
+
+    public static boolean isEmpty(Object object)
+    {
+        if (null == object)
+        {
+            return true;
+        }
+
+        String str = object.toString().trim();
+        if (str.length() <= 0)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    public static boolean isEmptyOrNull(Object object)
+    {
+        if (null == object)
+        {
+            return true;
+        }
+
+        String str = object.toString().trim();
+        if (str.length() <= 0 || "null".equalsIgnoreCase(str))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     public static class TimeConvert
