@@ -9,7 +9,7 @@
 	<name>Zyy Oss</name>
 	<modules>
 		<module>oss-core</module>
-        	<module>oss-flog</module>
+        <module>oss-flog</module>
 		<module>oss-http</module>
 		<module>oss-share</module>
 		<module>oss-monserver</module>
