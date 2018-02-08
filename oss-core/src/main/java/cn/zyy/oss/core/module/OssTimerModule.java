@@ -526,7 +526,7 @@ public class OssTimerModule extends OssTaskFsm
         if (tcb.iCount >= 10 && tcb.iCount < 10000)
         {
             int tmpQue = INVALID_VALUE;
-            
+
             /* [10, 10000)定时器, 进行队列分解; 100ms->1s->10s->100s队列周期越大, 越迟触发 */
             int iLevelQue = (tcb.iCount % 10000) / 1000;
             if (iLevelQue > 0)
@@ -559,26 +559,25 @@ public class OssTimerModule extends OssTaskFsm
             {
                 /* 如果没有毫秒时间, 则需要保证一个定时器的分级队列在[iQue, iQue1s, iQue10s, iQue100s]中没有重复 */
                 tcb.iQue = tmpQue;
-                if(tmpQue >= 30)
+                if (tmpQue >= 30)
                 {
                     tcb.iQue100s = INVALID_VALUE;
                 }
-                else if(tmpQue >= 20)
+                else if (tmpQue >= 20)
                 {
                     tcb.iQue10s = INVALID_VALUE;
                 }
-                else if(tmpQue >= 10)
+                else if (tmpQue >= 10)
                 {
                     tcb.iQue1s = INVALID_VALUE;
                 }
             }
-            
-            if(tcb.iQue < 0)
+
+            if (tcb.iQue < 0)
             {
                 log.error("addRelTimerQue: TCB[" + idxTcb + "]'s iQue is invalid");
                 return OssCoreConstants.RET_ERROR;
             }
-            
 
             iRet = addLevelTimerQue(idxTcb);
         }

@@ -25,7 +25,7 @@ public abstract class OssTask
     protected String taskName;
     protected int    priority;
     protected Thread thread;
-    
+
     /* 状态机任务 */
     protected OssTask(int taskNo, int taskType, String taskName, int iPriority)
     {
@@ -126,12 +126,12 @@ public abstract class OssTask
     {
         return (OssCoreConstants.TNO_INVALID == tno) ? false : true;
     }
-    
+
     protected int getSysPriorityo()
     {
         return thread.getPriority();
     }
-    
+
     protected void setSysPriorityo(int sysPriority)
     {
         thread.setPriority(sysPriority);

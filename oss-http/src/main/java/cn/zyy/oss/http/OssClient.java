@@ -21,7 +21,7 @@ import cn.zyy.oss.share.OssRequest;
 public class OssClient
 {
     private static final OssLog log = new OssLog(OssLog.LOG_MODULE_OSS);
-    
+
     public static String getBodyString(Object body)
     {
         String strBody = null;
